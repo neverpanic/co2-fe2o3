@@ -1,0 +1,9 @@
+[package]
+name = "co2-fe2o3"
+version = "0.1.0"
+authors = ["Clemens Lang <neverpanic@gmail.com>"]
+
+[dependencies]
+hidapi = "0.5"
+rand = "0.6"
+rust-crypto = "^0.2"
