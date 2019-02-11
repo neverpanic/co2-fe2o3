@@ -13,7 +13,7 @@ use std::env;
 use std::error;
 use std::fs;
 use std::process;
-use std::sync::mpsc::{sync_channel, TryRecvError};
+use std::sync::mpsc::{channel, TryRecvError};
 use std::thread;
 use std::time::Duration;
 
@@ -42,7 +42,7 @@ fn main() {
         }
     };
 
-    let (tx, rx) = sync_channel::<sink::Measurement>(10);
+    let (tx, rx) = channel::<sink::Measurement>();
     let writer = thread::spawn(move|| {
         let mut sinks = sink::from_config(&config.sink);
 
