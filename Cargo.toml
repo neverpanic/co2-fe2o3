@@ -4,6 +4,12 @@ version = "0.1.0"
 authors = ["Clemens Lang <neverpanic@gmail.com>"]
 
 [dependencies]
+chrono = "0.4.6"
 hidapi = "0.5"
+influx_db_client = "0.3.6"
+native-tls = "0.2.2"
 rand = "0.6"
 rust-crypto = "^0.2"
+serde = "1.0.87"
+serde_derive = "1.0.87"
+toml = "0.4.10"
