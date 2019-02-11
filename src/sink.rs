@@ -47,33 +47,35 @@ pub fn from_config(sink_configs: &Vec<SinkConfig>) -> Vec<Box<Sink>> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Measurement<'a> {
-    pub measurement: &'a str,
-    pub fields: HashMap<&'a str, Value>,
-    pub tags: HashMap<&'a str, Value>,
+pub struct Measurement {
+    pub measurement: String,
+    pub fields: HashMap<String, Value>,
+    pub tags: HashMap<String, Value>,
     pub timestamp: DateTime<Utc>,
 }
 
-impl<'a> Measurement<'a> {
-    pub fn new(measurement: &'a str) -> Measurement {
-        let fields = HashMap::new();
-        let tags = HashMap::new();
-        let timestamp = Utc::now();
-        Measurement{measurement, fields, tags, timestamp}
+impl Measurement {
+    pub fn new(measurement: &str) -> Measurement {
+        Measurement{
+            measurement: String::from(measurement),
+            fields: HashMap::new(),
+            tags: HashMap::new(),
+            timestamp: Utc::now(),
+        }
     }
 
-    pub fn field(&mut self, name: &'a str, value: Value) -> &mut Self {
-        self.fields.insert(name, value);
+    pub fn field(mut self, name: &str, value: Value) -> Self {
+        self.fields.insert(String::from(name), value);
         self
     }
 
-    pub fn tag(&mut self, name: &'a str, value: Value) -> &mut Self {
-        self.tags.insert(name, value);
+    pub fn tag(mut self, name: &str, value: Value) -> Self {
+        self.tags.insert(String::from(name), value);
         self
     }
 }
 
-impl<'a> fmt::Display for Measurement<'a> {
+impl fmt::Display for Measurement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {} ", self.measurement, self.timestamp.format("%Y-%m-%d %H:%M:%S%.f"))?;
 

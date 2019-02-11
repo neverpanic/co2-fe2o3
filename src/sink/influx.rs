@@ -39,7 +39,7 @@ impl ToInflux for SinkValue {
 
 impl Sink for InfluxSink {
     fn add_measurement(&mut self, measurement: &super::Measurement) {
-        let mut point = Point::new(measurement.measurement);
+        let mut point = Point::new(&measurement.measurement);
         for (key, value) in &measurement.fields {
             point.add_field(key, value.to_influx());
         }
@@ -56,12 +56,20 @@ impl Sink for InfluxSink {
         if self.points.point.len() > 0 {
             submit = match self.points.point[0].timestamp {
                 None => false,
-                Some(ts) => ts + self.bulk_time.num_nanoseconds().unwrap_or(0) < Utc::now().timestamp_nanos(),
+                Some(ts) => {
+                    let expiry_boundary = ts + self.bulk_time.num_nanoseconds().unwrap_or(0);
+                    let now = Utc::now().timestamp_nanos();
+                    expiry_boundary < now
+                },
             }
         }
         if submit {
+            let num_points = self.points.point.len();
             match self.client.write_points(&mut self.points, Some(Precision::Nanoseconds), None) {
-                Ok(_) => self.points = Points::create_new(Vec::new()),
+                Ok(_) => {
+                    println!("----- {} submitted -----", num_points);
+                    self.points = Points::create_new(Vec::new())
+                },
                 Err(err) => println!("Failed to submit points: {}", err),
             }
         }

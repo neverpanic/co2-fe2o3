@@ -1,12 +1,14 @@
 extern crate hidapi;
 extern crate rand;
 extern crate crypto;
+extern crate chrono;
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use hidapi::{HidDeviceInfo, HidDevice, HidApi};
-use rand::Rng;
-use std::time::SystemTime;
+use self::crypto::digest::Digest;
+use self::crypto::sha2::Sha256;
+use self::hidapi::{HidDeviceInfo, HidDevice, HidApi};
+use self::rand::Rng;
+
+use super::sink::{Measurement, Value};
 
 const CO2_SENSOR_VENDOR: u16 = 0x4d9;
 const CO2_SENSOR_PRODUCT: u16 = 0xa052;
@@ -18,12 +20,6 @@ pub struct Sensor {
     name: String,
     device: HidDevice,
     key: [u8; 8],
-}
-
-pub struct SensorValue {
-    pub timestamp: SystemTime,
-    pub temperature: f64,
-    pub co2ppm: u32
 }
 
 fn sha256(input: &[u8]) -> String {
@@ -69,10 +65,9 @@ impl Sensor {
         Some(sensors)
     }
 
-    pub fn read(&self) -> Option<SensorValue> {
+    pub fn read(&self) -> Option<Measurement> {
         let mut temperature: Option<f64> = None;
         let mut co2ppm: Option<u32> = None;
-        let timestamp = SystemTime::now();
         let mut counter = 0;
 
         loop {
@@ -109,7 +104,10 @@ impl Sensor {
                 Some(val) => val,
                 None => continue
             };
-            return Some(SensorValue{timestamp, temperature: temp, co2ppm: co2})
+            return Some(Measurement::new("room_climate")
+                .tag("sensor", Value::String(self.name().to_string()))
+                .field("co2", Value::Integer(co2 as i64))
+                .field("temperature", Value::Float(temp)))
         }
     }
 
@@ -141,7 +139,7 @@ impl Sensor {
         accumulator
     }
 
-    pub fn name(&self) -> &String {
+    pub fn name(&self) -> &str {
         &self.name
     }
 }

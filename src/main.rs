@@ -1,13 +1,13 @@
-extern crate co2_fe2o3;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate toml;
 
+mod sensor;
 mod sink;
 
-use co2_fe2o3::Sensor;
-use sink::{Measurement, Value, SinkConfig};
+use sensor::Sensor;
+use sink::SinkConfig;
 
 use std::env;
 use std::error;
@@ -42,11 +42,6 @@ fn main() {
         }
     };
 
-    let mut devices = match Sensor::sensors() {
-        None => vec![],
-        Some(devices) => devices
-    };
-
     let (tx, rx) = sync_channel::<sink::Measurement>(10);
     let writer = thread::spawn(move|| {
         let mut sinks = sink::from_config(&config.sink);
@@ -70,21 +65,22 @@ fn main() {
         }
     });
 
+    let mut devices = match Sensor::sensors() {
+        None => vec![],
+        Some(devices) => devices
+    };
+
     while devices.len() > 0 {
-        devices = devices.into_iter().filter_map(|device|
+        devices.retain(|device|
             match device.read() {
-                None => return None,
-                Some(value) => {
-                    let mut measurement = Measurement::new("room_climate");
-                    measurement
-                        .tag("sensor", Value::String(device.name().to_string()))
-                        .field("co2", Value::Integer(value.co2ppm as i64))
-                        .field("temperature", Value::Float(value.temperature));
+                None => false,
+                Some(measurement) => {
                     println!("{}", measurement);
                     tx.send(measurement).unwrap();
-                    Some(device)
+                    true
                 }
-            }).collect();
+            }
+        );
     }
 
     eprintln!("No devices left to query, exiting after all data has been written!");
