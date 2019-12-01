@@ -5,7 +5,7 @@ authors = ["Clemens Lang <neverpanic@gmail.com>"]
 
 [dependencies]
 chrono = "0.4.6"
-hidapi = "0.5"
+hidapi = "1.0"
 influx_db_client = "0.3.6"
 native-tls = "0.2.2"
 rand = "0.6"
