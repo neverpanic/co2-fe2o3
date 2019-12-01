@@ -22,7 +22,7 @@ struct Config {
     sink: Vec<SinkConfig>,
 }
 
-fn parse_config(filename: &str) -> Result<Config, Box<error::Error>> {
+fn parse_config(filename: &str) -> Result<Config, Box<dyn error::Error>> {
     let config: Config = toml::from_str(&fs::read_to_string(filename)?)?;
     Ok(config)
 }

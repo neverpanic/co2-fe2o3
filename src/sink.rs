@@ -36,7 +36,7 @@ impl fmt::Display for Value {
     }
 }
 
-pub fn from_config(sink_configs: &Vec<SinkConfig>) -> Vec<Box<Sink>> {
+pub fn from_config(sink_configs: &Vec<SinkConfig>) -> Vec<Box<dyn Sink>> {
     let mut sinks = Vec::new();
     for sink_config in sink_configs {
         sinks.push(match sink_config {

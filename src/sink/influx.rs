@@ -77,7 +77,7 @@ impl Sink for InfluxSink {
 }
 
 impl InfluxSink {
-    pub fn from_config(config: &InfluxConfig) -> Box<Sink> {
+    pub fn from_config(config: &InfluxConfig) -> Box<dyn Sink> {
         let client = Client::new_with_option(
                 config.host.to_owned(),
                 config.database.to_owned(),
