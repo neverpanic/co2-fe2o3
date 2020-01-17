@@ -33,7 +33,7 @@ impl Sensor {
         // Open device
         let device = match info.open_device(api) {
             Ok(device) => device,
-            Err(_) => return None
+            Err(_) => return None,
         };
 
         // Generate key
@@ -49,15 +49,16 @@ impl Sensor {
 
         // Generate (somewhat) human-readable name
         let name = sha256(info.path.as_bytes());
-        Some(Sensor{name, device, key})
+        Some(Sensor { name, device, key })
     }
 
     pub fn sensors() -> Option<Vec<Sensor>> {
         let api = match HidApi::new() {
             Ok(api) => api,
-            Err(_) => return None
+            Err(_) => return None,
         };
-        let sensors = api.devices().into_iter()
+        let sensors = api.devices()
+            .into_iter()
             .filter(|info| info.vendor_id == CO2_SENSOR_VENDOR)
             .filter(|info| info.product_id == CO2_SENSOR_PRODUCT)
             .filter_map(|info| Sensor::new(&api, info))
@@ -74,7 +75,7 @@ impl Sensor {
             let mut buf: [u8; 8] = [0; 8];
             let size = match self.device.read(&mut buf) {
                 Ok(size) => size,
-                Err(_) => return None
+                Err(_) => return None,
             };
             if size != buf.len() {
                 return None;
@@ -83,31 +84,32 @@ impl Sensor {
             let decrypted = self.decrypt(&buf);
             let value = (decrypted[1] as u16) << 8 | (decrypted[2] as u16);
             match decrypted[0] {
-                METER_CO2 =>
-                    co2ppm = Some(value as u32),
-                METER_TEMP =>
-                    temperature = Some((((value as f64) / 16.0 - 273.15) * 10.0).round() / 10.0),
-                _ =>
-                    continue
+                METER_CO2 => co2ppm = Some(value as u32),
+                METER_TEMP => {
+                    temperature = Some((((value as f64) / 16.0 - 273.15) * 10.0).round() / 10.0)
+                }
+                _ => continue,
             }
 
             counter += 1;
             if counter > 5 {
-                return None
+                return None;
             }
 
             let temp = match temperature {
                 Some(val) => val,
-                None => continue
+                None => continue,
             };
             let co2 = match co2ppm {
                 Some(val) => val,
-                None => continue
+                None => continue,
             };
-            return Some(Measurement::new("room_climate")
-                .tag("sensor", Value::String(self.name().to_string()))
-                .field("co2", Value::Integer(co2 as i64))
-                .field("temperature", Value::Float(temp)))
+            return Some(
+                Measurement::new("room_climate")
+                    .tag("sensor", Value::String(self.name().to_string()))
+                    .field("co2", Value::Integer(co2 as i64))
+                    .field("temperature", Value::Float(temp)),
+            );
         }
     }
 

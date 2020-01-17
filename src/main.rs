@@ -43,7 +43,7 @@ fn main() {
     };
 
     let (tx, rx) = channel::<sink::Measurement>();
-    let writer = thread::spawn(move|| {
+    let writer = thread::spawn(move || {
         let mut sinks = sink::from_config(&config.sink);
 
         loop {
@@ -52,10 +52,11 @@ fn main() {
                 sink.submit()
             }
             match rx.try_recv() {
-                Ok(measurement) =>
+                Ok(measurement) => {
                     for sink in &mut sinks {
                         sink.add_measurement(&measurement)
-                    },
+                    }
+                }
                 Err(TryRecvError::Disconnected) => break,
                 Err(TryRecvError::Empty) => continue,
             }
@@ -67,20 +68,17 @@ fn main() {
 
     let mut devices = match Sensor::sensors() {
         None => vec![],
-        Some(devices) => devices
+        Some(devices) => devices,
     };
 
     while devices.len() > 0 {
-        devices.retain(|device|
-            match device.read() {
-                None => false,
-                Some(measurement) => {
-                    println!("{}", measurement);
-                    tx.send(measurement).unwrap();
-                    true
-                }
+        devices.retain(|device| match device.read() {
+            None => false,
+            Some(measurement) => {
+                tx.send(measurement).unwrap();
+                true
             }
-        );
+        });
     }
 
     eprintln!("No devices left to query, exiting after all data has been written!");
