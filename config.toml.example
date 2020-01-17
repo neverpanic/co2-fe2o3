@@ -1,0 +1,10 @@
+[[sink]]
+type = "Print"
+
+[[sink]]
+type = "Influx"
+host = "https://example.com/influxdb"
+database = "climate"
+user = "username"
+pass = "passw0rd"
+bulk_time = 60
