@@ -1,8 +1,10 @@
 extern crate chrono;
 
 pub mod influx;
+pub mod print;
 
 use self::influx::{InfluxSink, InfluxConfig};
+use self::print::{PrintSink, PrintConfig};
 
 use self::chrono::{DateTime, Utc};
 use std::collections::HashMap;
@@ -12,6 +14,7 @@ use std::fmt;
 #[serde(tag = "type")]
 pub enum SinkConfig {
     Influx(InfluxConfig),
+    Print(PrintConfig),
 }
 
 pub trait Sink {
@@ -41,6 +44,7 @@ pub fn from_config(sink_configs: &Vec<SinkConfig>) -> Vec<Box<dyn Sink>> {
     for sink_config in sink_configs {
         sinks.push(match sink_config {
             SinkConfig::Influx(val) => InfluxSink::from_config(val),
+            SinkConfig::Print(val) => PrintSink::from_config(val),
         });
     }
     sinks
@@ -56,7 +60,7 @@ pub struct Measurement {
 
 impl Measurement {
     pub fn new(measurement: &str) -> Measurement {
-        Measurement{
+        Measurement {
             measurement: String::from(measurement),
             fields: HashMap::new(),
             tags: HashMap::new(),
@@ -77,9 +81,14 @@ impl Measurement {
 
 impl fmt::Display for Measurement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} ", self.measurement, self.timestamp.format("%Y-%m-%d %H:%M:%S%.f"))?;
+        write!(
+            f,
+            "{} {} ",
+            self.measurement,
+            self.timestamp.format("%Y-%m-%d %H:%M:%S%.f")
+        )?;
 
-        let mut tags : Vec<_> = self.tags.iter().collect();
+        let mut tags: Vec<_> = self.tags.iter().collect();
         tags.sort_by(|a, b| a.0.cmp(b.0));
         for (idx, (key, value)) in tags.iter().enumerate() {
             if idx != 0 {
@@ -91,7 +100,7 @@ impl fmt::Display for Measurement {
             write!(f, " ")?;
         }
 
-        let mut fields : Vec<_> = self.fields.iter().collect();
+        let mut fields: Vec<_> = self.fields.iter().collect();
         fields.sort_by(|a, b| a.0.cmp(b.0));
         for (idx, (key, value)) in fields.iter().enumerate() {
             if idx != 0 {
