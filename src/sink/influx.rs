@@ -1,6 +1,6 @@
-extern crate chrono;
-extern crate influx_db_client;
-extern crate native_tls;
+use chrono;
+use influx_db_client;
+use native_tls;
 
 use self::chrono::{Utc, Duration};
 use self::influx_db_client::{Client, Point, Points, Value, Precision, TLSOption};

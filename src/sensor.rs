@@ -1,7 +1,7 @@
-extern crate hidapi;
-extern crate rand;
-extern crate crypto;
-extern crate chrono;
+use hidapi;
+use rand;
+use crypto;
+
 
 use self::crypto::digest::Digest;
 use self::crypto::sha2::Sha256;
