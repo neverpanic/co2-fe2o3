@@ -1,4 +1,4 @@
-extern crate chrono;
+use chrono;
 
 pub mod influx;
 pub mod print;
@@ -18,7 +18,7 @@ pub enum SinkConfig {
 }
 
 pub trait Sink {
-    fn add_measurement(&mut self, &Measurement);
+    fn add_measurement(&mut self, _: &Measurement);
     fn submit(&mut self);
 }
 
@@ -30,7 +30,7 @@ pub enum Value {
 }
 
 impl fmt::Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::String(val) => write!(f, "{}", val),
             Value::Integer(val) => write!(f, "{}", val),
@@ -80,7 +80,7 @@ impl Measurement {
 }
 
 impl fmt::Display for Measurement {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{} {} ",

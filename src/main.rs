@@ -1,13 +1,13 @@
-extern crate serde;
+
 #[macro_use]
 extern crate serde_derive;
-extern crate toml;
+use toml;
 
 mod sensor;
 mod sink;
 
-use sensor::Sensor;
-use sink::SinkConfig;
+use crate::sensor::Sensor;
+use crate::sink::SinkConfig;
 
 use std::env;
 use std::error;
