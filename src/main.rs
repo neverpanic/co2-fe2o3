@@ -1,7 +1,7 @@
-
 #[macro_use]
 extern crate serde_derive;
 use toml;
+use futures::executor::block_on;
 
 mod sensor;
 mod sink;
@@ -51,7 +51,7 @@ fn main() {
         loop {
             thread::sleep(Duration::from_secs(1));
             for sink in &mut sinks {
-                sink.submit()
+                block_on(sink.submit())
             }
             match rx.try_recv() {
                 Ok(measurement) => {
@@ -64,7 +64,7 @@ fn main() {
             }
         }
         for sink in &mut sinks {
-            sink.submit()
+            block_on(sink.submit())
         }
     });
 

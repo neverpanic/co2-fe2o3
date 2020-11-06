@@ -1,4 +1,4 @@
-
+use async_trait::async_trait;
 
 use super::Sink;
 
@@ -10,12 +10,13 @@ pub struct PrintSink {
     points: Vec<super::Measurement>,
 }
 
+#[async_trait]
 impl Sink for PrintSink {
     fn add_measurement(&mut self, measurement: &super::Measurement) {
         self.points.push(measurement.to_owned());
     }
 
-    fn submit(&mut self) {
+    async fn submit(&mut self) {
         self.points.retain(|point| {
             println!("{}", point);
             false

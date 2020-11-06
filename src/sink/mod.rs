@@ -1,4 +1,5 @@
 use chrono;
+use async_trait::async_trait;
 
 pub mod influx;
 pub mod print;
@@ -17,9 +18,10 @@ pub enum SinkConfig {
     Print(PrintConfig),
 }
 
+#[async_trait]
 pub trait Sink {
     fn add_measurement(&mut self, _: &Measurement);
-    fn submit(&mut self);
+    async fn submit(&mut self);
 }
 
 #[derive(Debug, Clone)]

@@ -5,7 +5,7 @@ use crypto;
 
 use self::crypto::digest::Digest;
 use self::crypto::sha2::Sha256;
-use self::hidapi::{HidDeviceInfo, HidDevice, HidApi};
+use self::hidapi::{DeviceInfo, HidDevice, HidApi};
 use self::rand::Rng;
 
 use super::sink::{Measurement, Value};
@@ -29,7 +29,7 @@ fn sha256(input: &[u8]) -> String {
 }
 
 impl Sensor {
-    fn new(api: &HidApi, info: &HidDeviceInfo) -> Option<Sensor> {
+    fn new(api: &HidApi, info: &DeviceInfo) -> Option<Sensor> {
         // Open device
         let device = match info.open_device(api) {
             Ok(device) => device,
@@ -48,7 +48,7 @@ impl Sensor {
         }
 
         // Generate (somewhat) human-readable name
-        let name = sha256(info.path.as_bytes());
+        let name = sha256(info.path().to_bytes());
         Some(Sensor { name, device, key })
     }
 
@@ -57,10 +57,10 @@ impl Sensor {
             Ok(api) => api,
             Err(_) => return None,
         };
-        let sensors = api.devices()
+        let sensors = api.device_list()
             .into_iter()
-            .filter(|info| info.vendor_id == CO2_SENSOR_VENDOR)
-            .filter(|info| info.product_id == CO2_SENSOR_PRODUCT)
+            .filter(|info| info.vendor_id() == CO2_SENSOR_VENDOR)
+            .filter(|info| info.product_id() == CO2_SENSOR_PRODUCT)
             .filter_map(|info| Sensor::new(&api, info))
             .collect();
         Some(sensors)
