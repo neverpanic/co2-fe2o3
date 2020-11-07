@@ -20,7 +20,7 @@ pub enum SinkConfig {
 
 #[async_trait]
 pub trait Sink {
-    fn add_measurement(&mut self, _: &Measurement);
+    async fn add_measurement(&mut self, _: &Measurement);
     async fn submit(&mut self);
 }
 
@@ -41,7 +41,7 @@ impl fmt::Display for Value {
     }
 }
 
-pub fn from_config(sink_configs: &Vec<SinkConfig>) -> Vec<Box<dyn Sink>> {
+pub fn from_config(sink_configs: &Vec<SinkConfig>) -> Vec<Box<dyn Sink + Send>> {
     let mut sinks = Vec::new();
     for sink_config in sink_configs {
         sinks.push(match sink_config {

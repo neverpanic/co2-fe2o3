@@ -14,4 +14,5 @@ rand = "^0.7.3"
 rust-crypto = "^0.2"
 serde = "^1.0.117"
 serde_derive = "^1.0.117"
+tokio = { version = "^0.2.5", features = ["full"] }
 toml = "^0.5.7"

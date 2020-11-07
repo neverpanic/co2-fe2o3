@@ -38,7 +38,7 @@ impl ToInflux for SinkValue {
 
 #[async_trait]
 impl Sink for InfluxSink {
-    fn add_measurement(&mut self, measurement: &super::Measurement) {
+    async fn add_measurement(&mut self, measurement: &super::Measurement) {
         let mut point = point!(&measurement.measurement);
         for (key, value) in &measurement.fields {
             point = point.add_field(key, value.to_influx());
@@ -81,7 +81,7 @@ impl Sink for InfluxSink {
 }
 
 impl InfluxSink {
-    pub fn from_config(config: &InfluxConfig) -> Box<dyn Sink> {
+    pub fn from_config(config: &InfluxConfig) -> Box<dyn Sink + Send> {
         let client = Client::new(
             config.host.parse().unwrap(),
             config.database.to_owned()

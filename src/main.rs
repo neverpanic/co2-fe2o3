@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate serde_derive;
+use futures::join;
+use tokio::sync::mpsc::{channel, Sender, Receiver, error::TryRecvError};
+use tokio::time::{interval, Duration};
 use toml;
-use futures::executor::block_on;
 
 mod sensor;
 mod sink;
@@ -13,9 +15,6 @@ use std::env;
 use std::error;
 use std::fs;
 use std::process;
-use std::sync::mpsc::{channel, TryRecvError};
-use std::thread;
-use std::time::{Duration, Instant};
 
 #[derive(Deserialize)]
 struct Config {
@@ -28,7 +27,67 @@ fn parse_config(filename: &str) -> Result<Config, Box<dyn error::Error>> {
     Ok(config)
 }
 
-fn main() {
+async fn consumer(config_sinks: &Vec<SinkConfig>, mut rx: Receiver<sink::Measurement>) {
+    let mut sinks = sink::from_config(&config_sinks);
+    let mut interval = interval(Duration::from_secs(1));
+
+    loop {
+        interval.tick().await;
+
+        for sink in &mut sinks {
+            sink.submit().await;
+        }
+
+        match rx.try_recv() {
+            Ok(measurement) => {
+                for sink in &mut sinks {
+                    sink.add_measurement(&measurement).await;
+                }
+            }
+            Err(TryRecvError::Closed) => break,
+            Err(TryRecvError::Empty) => continue,
+        }
+    }
+    for sink in &mut sinks {
+        sink.submit().await;
+    }
+}
+
+async fn producer(config_poll_interval: Option<u64>, mut tx: Sender<sink::Measurement>) {
+    let mut devices = match Sensor::sensors() {
+        None => vec![],
+        Some(devices) => devices,
+    };
+
+    let poll_interval = match config_poll_interval {
+        Some(i) => Duration::from_secs(i),
+        None => Duration::from_millis(1),
+    };
+
+    let mut interval = interval(poll_interval);
+
+    while devices.len() > 0 {
+        interval.tick().await;
+
+        let mut measurements = vec![];
+        devices.retain(|device| match device.read() {
+            None => false,
+            Some(measurement) => {
+                measurements.push(measurement);
+                true
+            }
+        });
+
+        for measurement in measurements {
+            tx.send(measurement).await.unwrap();
+        }
+    }
+
+    drop(tx);
+}
+
+#[tokio::main()]
+async fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Usage: {} config-file", args[0]);
@@ -43,63 +102,21 @@ fn main() {
         }
     };
 
-    let config_sinks = config.sink;
-    let (tx, rx) = channel::<sink::Measurement>();
-    let writer = thread::spawn(move || {
-        let mut sinks = sink::from_config(&config_sinks);
+    let (tx, rx) = channel::<sink::Measurement>(50);
 
-        loop {
-            thread::sleep(Duration::from_secs(1));
-            for sink in &mut sinks {
-                block_on(sink.submit())
-            }
-            match rx.try_recv() {
-                Ok(measurement) => {
-                    for sink in &mut sinks {
-                        sink.add_measurement(&measurement)
-                    }
-                }
-                Err(TryRecvError::Disconnected) => break,
-                Err(TryRecvError::Empty) => continue,
-            }
-        }
-        for sink in &mut sinks {
-            block_on(sink.submit())
-        }
+    let poll_interval = config.poll_interval;
+    let consumer = tokio::spawn(async move {
+        consumer(&config.sink, rx).await;
     });
 
-    let mut devices = match Sensor::sensors() {
-        None => vec![],
-        Some(devices) => devices,
-    };
+    let producer = tokio::spawn(async move {
+        producer(poll_interval, tx).await;
+        eprintln!("No devices left to query, exiting after all data has been written!");
+    });
 
-    let poll_interval = match config.poll_interval {
-        Some(i) => Duration::from_secs(i),
-        None => Default::default(),
-    };
-
-    while devices.len() > 0 {
-        let begin_poll = Instant::now();
-
-        devices.retain(|device| match device.read() {
-            None => false,
-            Some(measurement) => {
-                tx.send(measurement).unwrap();
-                true
-            }
-        });
-
-        let elapsed = Instant::now() - begin_poll;
-        let sleepfor = poll_interval
-            .checked_sub(elapsed)
-            .unwrap_or_default();
-        thread::sleep(sleepfor);
-    }
-
-    eprintln!("No devices left to query, exiting after all data has been written!");
-
-    drop(tx);
-    writer.join().unwrap();
+    let (producer_result, consumer_result) = join!(producer, consumer);
+    producer_result.unwrap();
+    consumer_result.unwrap();
 
     process::exit(1);
 }

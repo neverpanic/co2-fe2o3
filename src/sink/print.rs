@@ -12,7 +12,7 @@ pub struct PrintSink {
 
 #[async_trait]
 impl Sink for PrintSink {
-    fn add_measurement(&mut self, measurement: &super::Measurement) {
+    async fn add_measurement(&mut self, measurement: &super::Measurement) {
         self.points.push(measurement.to_owned());
     }
 
@@ -25,7 +25,7 @@ impl Sink for PrintSink {
 }
 
 impl PrintSink {
-    pub fn from_config(_config: &PrintConfig) -> Box<dyn Sink> {
+    pub fn from_config(_config: &PrintConfig) -> Box<dyn Sink + Send> {
         Box::new(PrintSink { points: Vec::new() })
     }
 }
