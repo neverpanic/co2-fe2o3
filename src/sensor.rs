@@ -42,7 +42,7 @@ impl Sensor {
 
         // Send key to device
         let mut buf: [u8; 9] = [0; 9];
-        &buf[1..9].clone_from_slice(&key[..]);
+        buf[1..9].clone_from_slice(&key[..]);
         if device.send_feature_report(&buf).is_err() {
             return None;
         }
