@@ -16,10 +16,22 @@ const CO2_SENSOR_PRODUCT: u16 = 0xa052;
 const METER_CO2: u8 = 0x50;
 const METER_TEMP: u8 = 0x42;
 
+/// Device's release number (`bcdDevice` in lsusb)
+///
+/// We use this to differentiate whether we need to generate and upload a key or use unencrypted
+/// communication.
+#[derive(Debug, PartialEq, Eq)]
+enum Version {
+    /// Version "1.00", uses encryption
+    V1_00,
+    /// Version "2.00", uses plain protocol
+    V2_00,
+}
+
 pub struct Sensor {
     name: String,
     device: HidDevice,
-    key: [u8; 8],
+    key: Option<[u8; 8]>,
 }
 
 fn sha256(input: &[u8]) -> String {
@@ -36,16 +48,32 @@ impl Sensor {
             Err(_) => return None,
         };
 
-        // Generate key
-        let mut key: [u8; 8] = [0; 8];
-        rand::thread_rng().fill(&mut key[..]);
+        // detect device version
+        let version = match info.release_number() {
+            0x100 => Version::V1_00,
+            0x200 => Version::V2_00,
+            other => {
+                eprintln!("Unknown serial number version '{}', defaulting to 1.00", other);
+                Version::V1_00
+            }
+        };
 
-        // Send key to device
-        let mut buf: [u8; 9] = [0; 9];
-        buf[1..9].clone_from_slice(&key[..]);
-        if device.send_feature_report(&buf).is_err() {
-            return None;
-        }
+        let key = if version == Version::V1_00 {
+            // Generate key
+            let mut key: [u8; 8] = [0; 8];
+            rand::thread_rng().fill(&mut key[..]);
+
+            // Send key to device
+            let mut buf: [u8; 9] = [0; 9];
+            buf[1..9].clone_from_slice(&key[..]);
+            if device.send_feature_report(&buf).is_err() {
+                return None;
+            }
+
+            Some(key)
+        } else {
+            None
+        };
 
         // Generate (somewhat) human-readable name
         let name = sha256(info.path().to_bytes());
@@ -114,6 +142,10 @@ impl Sensor {
     }
 
     fn decrypt(&self, buf: &[u8; 8]) -> [u8; 8] {
+        if self.key.is_none() {
+            return *buf;
+        }
+
         let state: [u8; 8] = [0x84, 0x47, 0x56, 0xd6, 0x07, 0x93, 0x93, 0x56];
         let shuffle: [usize; 8] = [2, 4, 0, 7, 1, 6, 5, 3];
 
@@ -124,7 +156,7 @@ impl Sensor {
         }
 
         let data = accumulator;
-        for (idx, k) in self.key.iter().enumerate() {
+        for (idx, k) in self.key.unwrap().iter().enumerate() {
             accumulator[idx] = data[idx] ^ k;
         }
 
